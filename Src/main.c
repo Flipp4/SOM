@@ -387,7 +387,8 @@ void StartSupervisorTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(1000);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);
   }
   /* USER CODE END 5 */ 
 }
@@ -405,7 +406,8 @@ void startExecTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(1000);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);
   }
   /* USER CODE END startExecTask */
 }
