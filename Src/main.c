@@ -64,7 +64,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define MEASURE 0x0A
+#define MEAN	0x0B
+#define STORE	0x0C
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -100,7 +102,7 @@ void StartADCTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint16_t CMD = 0x00;
 /* USER CODE END 0 */
 
 /**
@@ -387,15 +389,24 @@ void StartSupervisorTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1000);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);
+    //osDelay(1000);
+	if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
+	{
+		for(int j = 0; j<50; j++)
+		{
+		    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
+		    vTaskDelay( 100 / portTICK_RATE_MS );
+		}
+		xSemaphoreGive(SemaphoreAHandle);
+		vTaskDelay( 200 / portTICK_RATE_MS );
+	}
   }
   /* USER CODE END 5 */ 
 }
 
 /* USER CODE BEGIN Header_startExecTask */
 /**
-* @brief Function implementing the ExecTask thread.
+* @brief Function im`plementing the ExecTask thread.
 * @param argument: Not used
 * @retval None
 */
@@ -406,8 +417,28 @@ void startExecTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1000);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);
+    /* Uzycie semafora binarnego */
+    /* portTICK_RATE_MS == 1 */
+    if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
+    {
+    	/* Pomiar ADC */
+    	if(CMD == MEASURE)
+    	{
+
+
+    		/* zwalnianie semafora */
+    		xSemaphoreGive(SemaphoreAHandle);
+    	}
+    	/* Liczenie sredniej */
+    	int i = 0;
+    	while(i < 1000000)
+    	{
+    		i++;
+    	}
+    	/* Zapis do pamieci */
+    }
+
+
   }
   /* USER CODE END startExecTask */
 }
