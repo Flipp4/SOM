@@ -394,7 +394,7 @@ void StartSupervisorTask(void const * argument)
 		{
 			for(int j = 0; j<50; j++)
 			{
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
+				HAL_GPIO_TogglePin(GPIOE, LD8_Pin);
 				vTaskDelay( 1000 / portTICK_RATE_MS );
 			}
 			xSemaphoreGive(SemaphoreAHandle);
@@ -426,21 +426,19 @@ void startExecTask(void const * argument)
 			if(CMD == MEASURE)
 			{
 				CMD = MEAN;
-				for(int j = 0; j<50; j++) {
-					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_7);
-					vTaskDelay( 10000 / portTICK_RATE_MS );
-				}
+				HAL_GPIO_TogglePin(GPIOE, LD7_Pin);
+				vTaskDelay( 10000 / portTICK_RATE_MS );
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
 			} else if(CMD == MEAN) {			/* Liczenie sredniej */
 				CMD = STORE;
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_6);
+				HAL_GPIO_TogglePin(GPIOE, LD6_Pin);
 				vTaskDelay( 10000 / portTICK_RATE_MS );
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
 			} else if(CMD == STORE){		/* Zapis do pamieci */
 				CMD = MEASURE;
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_5);
+				HAL_GPIO_TogglePin(GPIOE, LD5_Pin);
 				vTaskDelay( 1000 / portTICK_RATE_MS );
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
