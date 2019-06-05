@@ -102,7 +102,14 @@ void StartADCTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define c  2
+#define r  10
 uint16_t CMD = 0x0A;
+uint16_t PomiarADC = 0;
+uint16_t DanePomiarowe[c][r];
+uint16_t *ptrDanePomiarowe = &DanePomiarowe[0][0];
+uint8_t GlobalCounter = 0;	/* licznik do uzupe³niania tablicy */
+
 /* USER CODE END 0 */
 
 /**
@@ -420,40 +427,52 @@ void startExecTask(void const * argument)
 		/* Uzycie semafora binarnego */
 		/* portTICK_RATE_MS == 1 */
 		/* Jezeli semafor jest wolny to wtedy przejdz dalej do wykonywania w¹tku */
-		if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
+
+		/* Pomiar ADC */
+		if(CMD == MEASURE)
 		{
-			/* Pomiar ADC */
-			if(CMD == MEASURE)
-			{
-				CMD = MEAN;
+			if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE ){
+				/* Pomiar ADC */
+				HAL_ADC_Start(&hadc1);
+				if( (HAL_ADC_PollForConversion(&hadc1, 10))  == HAL_OK) {
+					PomiarADC = HAL_ADC_GetValue(&hadc1);
+					ptrDanePomiarowe=&DanePomiarowe[0][GlobalCounter];
+					*ptrDanePomiarowe= PomiarADC;
+					//*ptrDanePomiarowe[1][GlobalCounter] = PomiarADC;	/* Wstawnienei do tablicy */
+					GlobalCounter ++;								/* Inc licznika */
+					if(GlobalCounter == 10)	{						/* Zerowanie liczniaka */
+						GlobalCounter = 0;
+					}
+				}
+
+				/* Sygnalizacja LED */
 				for(int j = 0; j<4; j++) {
 					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_9);
 					vTaskDelay( 300 / portTICK_RATE_MS );
 				}
-				/* zwalnianie semafora */
-				xSemaphoreGive(SemaphoreAHandle);
-			} else if(CMD == MEAN) {			/* Liczenie sredniej */
-				CMD = STORE;
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-				vTaskDelay( 1000 / portTICK_RATE_MS );
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-				/* zwalnianie semafora */
-				xSemaphoreGive(SemaphoreAHandle);
-			} else if(CMD == STORE){		/* Zapis do pamieci */
-				CMD = MEASURE;
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_11);
-				vTaskDelay( 1000 / portTICK_RATE_MS );
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_11);
-				/* zwalnianie semafora */
-				xSemaphoreGive(SemaphoreAHandle);
 			}
+			xSemaphoreGive(SemaphoreAHandle);/* zwalnianie semafora */
+			CMD = MEAN;
+		} else if(CMD == MEAN) {			/* Liczenie sredniej */
+			if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE ){
+				for(int j = 0; j<4; j++) {
+					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+					vTaskDelay( 300 / portTICK_RATE_MS );
+				}
+			}
+			xSemaphoreGive(SemaphoreAHandle);		/* zwalnianie semafora */
+			CMD = STORE;
 		}
-
-		/*		int i = 0;
-		while(i < 1000000) {
-			i++;
+		else if(CMD == STORE){		/* Zapis do pamieci */
+			if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE ) {
+				for(int j = 0; j<4; j++) {
+					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_11);
+					vTaskDelay( 300 / portTICK_RATE_MS );
+				}
+			}
+			xSemaphoreGive(SemaphoreAHandle);		/* zwalnianie semafora */
+			CMD = MEASURE;
 		}
-		 */
 	}
 
 
