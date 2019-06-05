@@ -139,3 +139,4 @@ RemoteSystemsTempFiles/.project
 .metadata/.plugins/org.eclipse.cdt.make.core/specs.c
 .metadata/.mylyn/repositories.xml.zip
 .metadata/.lock
+.settings/language.settings.xml
