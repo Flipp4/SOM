@@ -51,6 +51,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "Common_data.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -64,9 +65,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MEASURE 0x0A
-#define MEAN	0x0B
-#define STORE	0x0C
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -384,13 +383,13 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartSupervisorTask */
 void StartSupervisorTask(void const * argument)
 {
-	CMD = MEASURE;
 	/* USER CODE BEGIN 5 */
 	/* Infinite loop */
+	CMD = MEASURE;
 	for(;;)
 	{
 		osDelay(1000);
-		/*if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
+		if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
 		{
 			for(int j = 0; j<50; j++)
 			{
@@ -399,7 +398,7 @@ void StartSupervisorTask(void const * argument)
 			}
 			xSemaphoreGive(SemaphoreAHandle);
 			vTaskDelay( 200 / portTICK_RATE_MS );
-		}*/
+		}
 	}
 	/* USER CODE END 5 */
 }
@@ -426,22 +425,25 @@ void startExecTask(void const * argument)
 			if(CMD == MEASURE)
 			{
 				CMD = MEAN;
-				for(int j = 0; j<3; j++) {
+				for(int j = 0; j<4; j++) {
 					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_9);
 					vTaskDelay( 800 / portTICK_RATE_MS );
+					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_9);
 				}
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
 			} else if(CMD == MEAN) {			/* Liczenie sredniej */
 				CMD = STORE;
 				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-				vTaskDelay( 10000 / portTICK_RATE_MS );
+				vTaskDelay( 1000 / portTICK_RATE_MS );
+				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
 			} else if(CMD == STORE){		/* Zapis do pamieci */
 				CMD = MEASURE;
 				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_11);
 				vTaskDelay( 1000 / portTICK_RATE_MS );
+				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_11);
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
 			}
