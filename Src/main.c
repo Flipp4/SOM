@@ -102,13 +102,21 @@ void StartADCTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define c  2
-#define r  10
+#define C  4
+#define R  10
 uint16_t CMD = 0x0A;
 uint16_t PomiarADC = 0;
-uint16_t DanePomiarowe[c][r];
+/* W tab DanePomiarowe - [0] - ADC1, [1] - ADC2, [2] - TS, [3] - VREF */
+uint16_t DanePomiarowe [C][R];
+uint16_t DataMean [C][1];							/* Tablica na licznie sredniej */
+uint16_t DataShare[4][2];
+uint16_t *ptrDataMean = &DataMean[0][0];
 uint16_t *ptrDanePomiarowe = &DanePomiarowe[0][0];
-uint8_t GlobalCounter = 0;	/* licznik do uzupe³niania tablicy */
+uint16_t *ptrDataShare = &DataShare[0][0];
+
+
+uint8_t GlobalCounter = 0;							/* licznik do uzupelniania tablicy */
+uint8_t MeasureCounter = 0; 						/* licznik do zmiany kolumny grupy pomiaru pomiaru */
 
 /* USER CODE END 0 */
 
@@ -434,16 +442,42 @@ void startExecTask(void const * argument)
 			if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE ){
 				/* Pomiar ADC */
 				HAL_ADC_Start(&hadc1);
-				if( (HAL_ADC_PollForConversion(&hadc1, 10))  == HAL_OK) {
-					PomiarADC = HAL_ADC_GetValue(&hadc1);
-					ptrDanePomiarowe=&DanePomiarowe[0][GlobalCounter];
-					*ptrDanePomiarowe= PomiarADC;
-					//*ptrDanePomiarowe[1][GlobalCounter] = PomiarADC;	/* Wstawnienei do tablicy */
-					GlobalCounter ++;								/* Inc licznika */
-					if(GlobalCounter == 10)	{						/* Zerowanie liczniaka */
-						GlobalCounter = 0;
-					}
+				/* pomiar na CH1 */
+				HAL_ADC_PollForConversion(&hadc1, 50);
+				PomiarADC = HAL_ADC_GetValue(&hadc1);
+				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
+				*ptrDanePomiarowe = PomiarADC;
+				MeasureCounter++;									/* zmiana liczniak grupy pomiarow */
+
+				/* pomiar na CH2 - chyba*/
+				HAL_ADC_PollForConversion(&hadc1, 50);
+				PomiarADC = HAL_ADC_GetValue(&hadc1);
+				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
+				*ptrDanePomiarowe = PomiarADC;
+				MeasureCounter++;									/* zmiana liczniak grupy pomiarow */
+
+				/* pomiar na TempSens - chyba*/
+				HAL_ADC_PollForConversion(&hadc1, 50);
+				PomiarADC = HAL_ADC_GetValue(&hadc1);
+				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
+				*ptrDanePomiarowe = PomiarADC;
+				MeasureCounter++;
+
+				/* pomiar na VREF - chyba*/
+				HAL_ADC_PollForConversion(&hadc1, 50);
+				PomiarADC = HAL_ADC_GetValue(&hadc1);
+				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
+				*ptrDanePomiarowe = PomiarADC;
+				MeasureCounter++;
+
+				HAL_ADC_Stop(&hadc1);
+
+				MeasureCounter = 0;
+				GlobalCounter ++;								/* Inc licznika */
+				if(GlobalCounter == 10)	{						/* Zerowanie liczniaka */
+					GlobalCounter = 0;
 				}
+
 
 				/* Sygnalizacja LED */
 				for(int j = 0; j<4; j++) {
@@ -460,6 +494,18 @@ void startExecTask(void const * argument)
 					vTaskDelay( 300 / portTICK_RATE_MS );
 				}
 			}
+			/* Liczenie sredniej */
+			for(int i = 0; i<R; i++) {
+				DataMean[0][0] += DanePomiarowe[0][i];
+				DataMean[1][0] += DanePomiarowe[1][i];
+				DataMean[2][0] += DanePomiarowe[2][i];
+				DataMean[3][0] += DanePomiarowe[3][i];
+			}
+			DataMean[0][0] /= R;
+			DataMean[1][0] /= R;
+			DataMean[2][0] /= R;
+			DataMean[3][0] /= R;
+
 			xSemaphoreGive(SemaphoreAHandle);		/* zwalnianie semafora */
 			CMD = STORE;
 		}
@@ -470,6 +516,13 @@ void startExecTask(void const * argument)
 					vTaskDelay( 300 / portTICK_RATE_MS );
 				}
 			}
+
+			/* przepisanie tablicy do tablicy wysylkowej */
+			for(int i = 0; i<4; i++) {
+				DataShare[i][0] = DanePomiarowe[i][9];
+				DataShare[i][1] = DataMean[i][0];
+			}
+
 			xSemaphoreGive(SemaphoreAHandle);		/* zwalnianie semafora */
 			CMD = MEASURE;
 		}
