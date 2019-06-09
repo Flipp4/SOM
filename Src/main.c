@@ -522,12 +522,13 @@ void StartSupervisorTask(void const * argument)
 	uint8_t ReceiveBuffer[COMMAND_SIZE];
 	uint16_t ReturnBuffer;
 	uint8_t ReturnString[15];
-	const char *zeros[3] = {0, 0, 0};
-	enInternalProtocolCommand_t InternProtocolCommand = enInternProtocolCommand_Error;
+	const uint8_t * zeros = "000";
+	enInternalProtocolCommand_t InternalProtocolCommand = enInternProtocolCommand_Error;
 
 	CMD = MEASURE;
 	for(;;)
 	{
+		HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
 		if (xQueueReceive(&ReturnMessageHandle, &ReturnBuffer, 0))
 		{
 			sprintf(ReturnString, "%d", ReturnBuffer);
@@ -540,27 +541,25 @@ void StartSupervisorTask(void const * argument)
 			HAL_UART_Receive(&huart4, ReceiveBuffer, 3, 500);
 			if(strcmp(ReceiveBuffer, zeros) != 0)
 			{
-				InternProtocolCommand = Communication_Process(&ReceiveBuffer);
-				if ( InternProtocolCommand != enInternProtocolCommand_Error)
+				InternalProtocolCommand = Communication_Process(ReceiveBuffer);
+				if ( InternalProtocolCommand != enInternProtocolCommand_Error)
 				{
-					xQueueSend(&InternalProtocolHandle, &InternProtocolCommand, 0);
+					if(xQueueSend(&InternalProtocolHandle, &InternalProtocolCommand, 0) != pdTRUE)
+					{
+					/*	If the internal command queue is full, the ExecutionTask might be choked
+						additional osDelay will help with the command process.*/
+						HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_SET);
+						osDelay(1000);
+						HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
+					}
+					InternalProtocolCommand = enInternProtocolCommand_Error;
 				}
 
 			}
-			osDelay(100);
+			osDelay(200);
+			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
 		}
 
-		osDelay(100);
-		if ((xSemaphoreTake(SemaphoreAHandle, 1000)) == pdTRUE )
-		{
-			for(int j = 0; j<4; j++)
-			{
-				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
-				vTaskDelay( 600 / portTICK_RATE_MS );
-			}
-			xSemaphoreGive(SemaphoreAHandle);
-			vTaskDelay( 200 / portTICK_RATE_MS );
-		}
 	}
   /* USER CODE END 5 */ 
 }
