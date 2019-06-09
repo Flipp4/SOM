@@ -54,7 +54,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Common_data.h"
+#include <string.h>
+#include <stdio.h>
+#include "Communication.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -83,6 +86,7 @@ osThreadId SupervisorTaskHandle;
 osThreadId ExecTaskHandle;
 osThreadId ADCTaskHandle;
 osMessageQId InternalProtocolHandle;
+osMessageQId ReturnMessageHandle;
 osMutexId MemoryMutexHandle;
 osSemaphoreId SemaphoreAHandle;
 osSemaphoreId SemaphoreBHandle;
@@ -191,6 +195,10 @@ int main(void)
   /* definition and creation of InternalProtocol */
   osMessageQDef(InternalProtocol, 32, uint16_t);
   InternalProtocolHandle = osMessageCreate(osMessageQ(InternalProtocol), NULL);
+
+  /* definition and creation of ReturnMessage */
+  osMessageQDef(ReturnMessage, 16, uint16_t);
+  ReturnMessageHandle = osMessageCreate(osMessageQ(ReturnMessage), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
 	/* add queues, ... */
@@ -450,16 +458,20 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, LD4_Pin|LD3_Pin|LD5_Pin|LD7_Pin 
                           |LD9_Pin|LD10_Pin|LD8_Pin|LD6_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1|GPIO_PIN_2, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : B1_Pin PA15 */
+  GPIO_InitStruct.Pin = B1_Pin|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD4_Pin LD3_Pin LD5_Pin LD7_Pin 
                            LD9_Pin LD10_Pin LD8_Pin LD6_Pin */
@@ -469,6 +481,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PD1 PD2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 }
 
@@ -488,16 +519,44 @@ void StartSupervisorTask(void const * argument)
 
   /* USER CODE BEGIN 5 */
 	/* Infinite loop */
+	uint8_t ReceiveBuffer[COMMAND_SIZE];
+	uint16_t ReturnBuffer;
+	uint8_t ReturnString[15];
+	const char *zeros[3] = {0, 0, 0};
+	enInternalProtocolCommand_t InternProtocolCommand = enInternProtocolCommand_Error;
+
 	CMD = MEASURE;
 	for(;;)
 	{
-		osDelay(1000);
-		if ((xSemaphoreTake(SemaphoreAHandle, 1000/ portTICK_RATE_MS)) == pdTRUE )
+		if (xQueueReceive(&ReturnMessageHandle, &ReturnBuffer, 0))
 		{
-			for(int j = 0; j<50; j++)
+			sprintf(ReturnString, "%d", ReturnBuffer);
+			HAL_UART_Transmit(&huart4, &ReturnString, 15, 100);
+
+		}
+		else
+		{
+			strcpy(ReceiveBuffer, zeros);
+			HAL_UART_Receive(&huart4, ReceiveBuffer, 3, 500);
+			if(strcmp(ReceiveBuffer, zeros) != 0)
+			{
+				InternProtocolCommand = Communication_Process(&ReceiveBuffer);
+				if ( InternProtocolCommand != enInternProtocolCommand_Error)
+				{
+					xQueueSend(&InternalProtocolHandle, &InternProtocolCommand, 0);
+				}
+
+			}
+			osDelay(100);
+		}
+
+		osDelay(100);
+		if ((xSemaphoreTake(SemaphoreAHandle, 1000)) == pdTRUE )
+		{
+			for(int j = 0; j<4; j++)
 			{
 				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
-				vTaskDelay( 1000 / portTICK_RATE_MS );
+				vTaskDelay( 600 / portTICK_RATE_MS );
 			}
 			xSemaphoreGive(SemaphoreAHandle);
 			vTaskDelay( 200 / portTICK_RATE_MS );
@@ -530,8 +589,7 @@ void startExecTask(void const * argument)
 				CMD = MEAN;
 				for(int j = 0; j<4; j++) {
 					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_9);
-					vTaskDelay( 800 / portTICK_RATE_MS );
-					HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_9);
+					vTaskDelay( 600 / portTICK_RATE_MS );
 				}
 				/* zwalnianie semafora */
 				xSemaphoreGive(SemaphoreAHandle);
@@ -560,7 +618,7 @@ void startExecTask(void const * argument)
 	}
 
 
-}
+
   /* USER CODE END startExecTask */
 }
 

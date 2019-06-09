@@ -13,6 +13,8 @@
 #define MEAN	0x0B
 #define STORE	0x0C
 
+#define COMMAND_SIZE 0x03
+
 /*	Internal protocol command types - enum style	*/
 typedef enum InternProtocolCommand
 {
@@ -22,7 +24,8 @@ typedef enum InternProtocolCommand
 	enInternProtocolCommand_DataOperationA,
 	enInternProtocolCommand_DataOperationB,
 	enInternProtocolCommand_Send,
-	enInternProtocolCommand_Clear
+	enInternProtocolCommand_Clear,
+	enInternProtocolCommand_Error
 }enInternalProtocolCommand_t;
 
 
