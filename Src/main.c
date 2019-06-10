@@ -540,7 +540,9 @@ void StartSupervisorTask(void const * argument)
 	const uint8_t * zeros = "000";
 	enInternalProtocolCommand_t InternalProtocolCommand = enInternProtocolCommand_Error;
 
-	Communication_Initialize();
+	Communication_Initialize(&huart4);
+
+	//HAL_UART_Receive_IT(&huart4, ReceiveBuffer, 1);
 	CMD = MEASURE;
 	for(;;)
 	{
@@ -608,14 +610,14 @@ void startExecTask(void const * argument)
 				PomiarADC = HAL_ADC_GetValue(&hadc1);
 				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
 				*ptrDanePomiarowe = PomiarADC;
-				MeasureCounter++;									/* zmiana liczniak grupy pomiarow */
+				MeasureCounter++;									/* zmiana licznika grupy pomiarów */
 
 				/* pomiar na CH2 - chyba*/
 				HAL_ADC_PollForConversion(&hadc1, 50);
 				PomiarADC = HAL_ADC_GetValue(&hadc1);
 				ptrDanePomiarowe = &DanePomiarowe[MeasureCounter][GlobalCounter];
 				*ptrDanePomiarowe = PomiarADC;
-				MeasureCounter++;									/* zmiana liczniak grupy pomiarow */
+				MeasureCounter++;									/* zmiana licznika grupy pomiarów */
 
 				/* pomiar na TempSens - chyba*/
 				HAL_ADC_PollForConversion(&hadc1, 50);

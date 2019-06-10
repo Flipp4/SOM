@@ -11,7 +11,7 @@
 #include "Common_data.h"
 #include <stdint.h>
 
-void Communication_initialize ( void );
+void Communication_initialize ( void* huart );
 enInternalProtocolCommand_t Communication_Process (uint8_t * Buffer);
 
 void Communication_ReceiveCallback(uint8_t Byte);
