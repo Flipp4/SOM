@@ -525,6 +525,7 @@ void StartSupervisorTask(void const * argument)
 	const uint8_t * zeros = "000";
 	enInternalProtocolCommand_t InternalProtocolCommand = enInternProtocolCommand_Error;
 
+	Communication_Initialize();
 	CMD = MEASURE;
 	for(;;)
 	{

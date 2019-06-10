@@ -14,4 +14,6 @@
 void Communication_initialize ( void );
 enInternalProtocolCommand_t Communication_Process (uint8_t * Buffer);
 
+void Communication_ReceiveCallback(uint8_t Byte);
+
 #endif /* COMMUNICATION_H_ */
